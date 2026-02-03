@@ -1,6 +1,6 @@
 {
     "dev": {
-        "app_function": "lambda.app",
+        "app_function": "spring_upgrade.app",
         "aws_region": "us-east-1",
         "exclude": [
             "boto3",
@@ -10,8 +10,8 @@
             "concurrent"
         ],
         "profile_name": "workspaces_machine_role",
-        "project_name": "lambda",
+        "project_name": "spring-upgrade",
         "runtime": "python3.13",
-        "s3_bucket": "zappa-4vvt0osz3"
+        "s3_bucket": "zappa-agsoqvldj"
     }
 }
