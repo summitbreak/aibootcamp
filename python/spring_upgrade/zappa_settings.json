@@ -1,0 +1,17 @@
+{
+    "dev": {
+        "app_function": "spring_upgrade.app",
+        "aws_region": "us-east-1",
+        "exclude": [
+            "boto3",
+            "dateutil",
+            "botocore",
+            "s3transfer",
+            "concurrent"
+        ],
+        "profile_name": "workspaces_machine_role",
+        "project_name": "spring-upgrade",
+        "runtime": "python3.13",
+        "s3_bucket": "aibootcamp-lambda"
+    }
+}

@@ -1,3 +1,3 @@
 # ignore unzipped html files
 python/recipe_builder/knowledge_base/
-python/lambda/*.zip
+python/spring_upgrade/*.zip

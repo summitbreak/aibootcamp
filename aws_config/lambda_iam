@@ -1,0 +1,38 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "GetLambdaParams",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:GetParameter",
+                "ssm:GetParameters"
+            ],
+            "Resource": [
+                "arn:aws:ssm:us-east-1:359598898987:parameter/spring_upgrade_lambda*"
+            ]
+        },
+        {
+            "Sid": "InvokeBedrock",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock:InvokeModel"
+            ],
+            "Resource": [
+                "arn:aws:bedrock:*::foundation-model/*",
+                "arn:aws:bedrock:us-east-1:359598898987:inference-profile/global.anthropic.claude-haiku-4-5-20251001-v1:0"
+            ]
+        },
+        {
+            "Sid": "SubscribeModel",
+            "Effect": "Allow",
+            "Action": [
+                "aws-marketplace:Subscribe",
+                "aws-marketplace:ViewSubscriptions"
+            ],
+            "Resource": [
+                "*"
+            ]
+        }
+    ]
+}
