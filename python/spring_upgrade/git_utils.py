@@ -12,7 +12,7 @@ logger = get_logger()
 
 def clone_repo(url, repo_dir, ssh_private_key_path):
     """Clone the target repo to the local file system."""
-    logger.info(f"Cloning repo {url} to {repo_dir}")
+    logger.info(f"Cloning repo {url} to {repo_dir}. ssh_private_key_path={ssh_private_key_path}")
     repo = Repo.clone_from(
         url,
         repo_dir,

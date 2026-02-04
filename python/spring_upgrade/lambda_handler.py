@@ -1,6 +1,7 @@
 import os
 import tempfile
 import time
+import glob
 
 from git_utils import GitHubProvider, clone_repo, create_branch, update_source_code
 from utils import get_logger, get_config
@@ -8,9 +9,9 @@ from bedrock import Claude
 
 logger = get_logger()
 
-PARAMETER_NAMES = (
+PARAMETER_NAMES = [
     "ssh_private_key"
-)
+]
 MODEL_AWS_REGION = "us-east-1"
 
 SSH_PRIVATE_KEY_FILENAME = "ssh_private_key"
@@ -21,12 +22,11 @@ MODEL_AWS_REGION = "us-east-1"
 SSH_PRIVATE_KEY_FILENAME = "ssh_private_key"
 
 
-def lambda_handler(event, context):
+def lambda_handler(request, context):
     """Lambda handler for the upgrade function.
     """
 
-    logger.info(f"Processing event: {event}")
-    request = event["body"]
+    logger.info(f"Processing event: {request}")
     spring_version = request["spring_version"]
     repo_url = request["github_url"]
     repo_name = repo_url.split("/")[-1]
@@ -50,7 +50,8 @@ def lambda_handler(event, context):
     repo = clone_repo(repo_url, target_repo_dir, ssh_private_key)
 
     # Create a map of relevant filenames with the actual filenames in the target repo
-    source_code_map = create_source_code_map(target_repo_dir, repo)
+    # TODO: optionally include code paths in request
+    source_code_map = create_source_code_map(target_repo_dir)
 
     # Trigger the code generation
     result = provider.upgrade_code(spring_version, source_code_map)
@@ -66,9 +67,7 @@ def lambda_handler(event, context):
         return
 
     # Create a pull request
-    git_provider.create_pull_request(
-        branch_name, result["title"], result["description"]
-    )
+    git_provider.create_pull_request(branch_name, result["title"], result["description"])
 
 
 def write_ssh_key(value, file_path):
@@ -116,14 +115,21 @@ def find_partial_matches(primary_paths, secondary_paths):
     return results
 
 
-def create_source_code_map(repo_dir, repo):
+def create_source_code_map(repo_dir):
     """Create a map of relevant filenames with the actual filenames in the target repo."""
-    logger.info(f"Creating source code map for.")
+    logger.info(f"Creating source code map for {repo_dir}.")
     source_code_map = {}
-    file_paths_in_repo = [entry.path for entry in repo.commit().tree.traverse()]
+    pattern = os.path.join(repo_dir, '**/*')
+    file_paths_in_repo = glob.glob(pattern, recursive=True)
     for filename in file_paths_in_repo:
+        if (os.path.isdir(filename)):
+            continue
         with open(os.path.join(repo_dir, filename), "r") as f:
-            source_code_map[filename] = f.read()
+            try:
+                source_code_map[filename] = f.read()
+            except Exception as e:
+                logger.warning(f"Failed parsing file {filename}")
+                continue
     return source_code_map
 
 

@@ -1,6 +1,6 @@
 import boto3
 from botocore.client import Config
-from langchain_community.llms import Bedrock
+from langchain_aws import ChatBedrock
 from langchain_core.prompts import PromptTemplate
 import re
 import json
@@ -12,7 +12,7 @@ config = Config(connect_timeout=240, read_timeout=240)
 
 logger = get_logger()
 
-DEFAULT_MODEL = "anthropic.claude-v2"
+DEFAULT_MODEL = "anthropic.claude-3.5-haiku-20241022-v1:0"
 DEFAULT_MODEL_REGION = "us-east-1"
 PROMPT_TEMPLATE = PromptTemplate(
     input_variables=["version", "source_code"],
@@ -40,7 +40,7 @@ class Model:
 
     def upgrade_code(self, version, source_code_map):
         """Trigger the code fix generation process."""
-        prompt = self._create_prompt(stack_trace, source_code_map)
+        prompt = self._create_prompt(version, source_code_map)
         content = self._invoke(prompt)
         cleaned_content = self.clean_result(content)
         return json.loads(cleaned_content)
@@ -65,7 +65,7 @@ class Claude(Model):
             region_name=model_aws_region,
             config=config,
         )
-        self.llm = Bedrock(
+        self.llm = ChatBedrock(
             client=bedrock_client,
             model_id=model_id,
             model_kwargs={
