@@ -12,6 +12,6 @@
         "profile_name": "workspaces_machine_role",
         "project_name": "spring-upgrade",
         "runtime": "python3.13",
-        "s3_bucket": "zappa-agsoqvldj"
+        "s3_bucket": "aibootcamp-lambda"
     }
 }
