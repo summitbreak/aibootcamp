@@ -1,6 +1,8 @@
 import boto3
 from botocore.client import Config
 from langchain_aws import ChatBedrock
+from pydantic import BaseModel, Field
+from typing import List
 from langchain_core.prompts import PromptTemplate
 import re
 import json
@@ -12,7 +14,7 @@ config = Config(connect_timeout=240, read_timeout=240)
 
 logger = get_logger()
 
-DEFAULT_MODEL = "anthropic.claude-3.5-haiku-20241022-v1:0"
+DEFAULT_MODEL = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
 DEFAULT_MODEL_REGION = "us-east-1"
 PROMPT_TEMPLATE = PromptTemplate(
     input_variables=["version", "source_code"],
@@ -42,8 +44,9 @@ class Model:
         """Trigger the code fix generation process."""
         prompt = self._create_prompt(version, source_code_map)
         content = self._invoke(prompt)
-        cleaned_content = self.clean_result(content)
-        return json.loads(cleaned_content)
+        return content
+        # cleaned_content = self.clean_result(content)
+        # return json.loads(cleaned_content)
 
     def clean_result(self, content):
         """Clean the response from the model."""
@@ -55,29 +58,41 @@ class Model:
         cleaned_result = cleaned_result.replace("\n", "\\n")
         return cleaned_result
 
+class UpdatedCode(BaseModel):
+    filename: str = Field(description="The filename of the modified code")
+    code: str = Field(description="The modified code")
+
+class CodeUpgradeResponse(BaseModel):
+    code: List[UpdatedCode] = []
+    title: str = Field(description="a title for the upgrade")
+    description: str = Field(description= "A description of the changes")
 
 class Claude(Model):
     """Claude model class."""
 
     def __init__(self, model_id=DEFAULT_MODEL, model_aws_region=DEFAULT_MODEL_REGION):
+        logger.info(f"Initializing Claude with model_id: {model_id} and region: {model_aws_region}")
         bedrock_client = boto3.client(
             "bedrock-runtime",
             region_name=model_aws_region,
             config=config,
         )
-        self.llm = ChatBedrock(
+        unstructured_llm = ChatBedrock(
             client=bedrock_client,
+            region_name = model_aws_region,
             model_id=model_id,
             model_kwargs={
                 "temperature": 0.0,
-                "max_tokens_to_sample": 10000,
-                "top_p": 0.999,
+                "max_tokens": 10000,
+                # "top_p": 0.999,
                 "top_k": 250,
                 "stop_sequences": [
                     "\\n\\nHuman::",
                 ],
             },
         )
+        self.llm = unstructured_llm.with_structured_output(CodeUpgradeResponse)
+
         logger.info("Initialized Claude")
 
     def _create_prompt(self, version, source_code_map):
@@ -97,11 +112,11 @@ class Claude(Model):
     def _invoke(self, prompt):
         """Invoke the model with the prompt."""
         logger.info(f"Prompt: {prompt}")
-        response = self.llm(prompt)
+        response = self.llm.invoke(prompt)
         # Append opening curly braces which might be missing, depending on the prompt.
-        if not response.startswith("{"):
-            response = "{" + response
         logger.info(f"Raw response from GenAI: {response}")
+        # if not response.startswith("{"):
+        #     response = "{" + response
         return response
 
 def remove_newlines(json_string):

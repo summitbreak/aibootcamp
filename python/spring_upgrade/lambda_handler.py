@@ -2,6 +2,7 @@ import os
 import tempfile
 import time
 import glob
+import json
 
 from git_utils import GitHubProvider, clone_repo, create_branch, update_source_code
 from utils import get_logger, get_config
@@ -10,7 +11,7 @@ from bedrock import Claude
 logger = get_logger()
 
 PARAMETER_NAMES = [
-    "ssh_private_key"
+    "ssh_private_key", "api_key"
 ]
 MODEL_AWS_REGION = "us-east-1"
 
@@ -34,7 +35,7 @@ def lambda_handler(request, context):
     logger.info(f"Retrieving config")
     config = get_config(PARAMETER_STORE_PREFIX, PARAMETER_NAMES)
     ssh_private_key = config["ssh_private_key"]
-    api_key = "foo"
+    api_key = config["api_key"]
 
     # Select a model provider to perform the code generation
     provider = Claude(model_aws_region=MODEL_AWS_REGION)
@@ -57,17 +58,17 @@ def lambda_handler(request, context):
     result = provider.upgrade_code(spring_version, source_code_map)
 
     # Modify the local cloned repo with the generated code
-    update_source_code(result["source_code"], target_repo_dir)
+    update_source_code(result.code, target_repo_dir)
 
     # Create a branch and commit/push the code to the source repo
     branch_name = f"upgrade-code-{round(time.time())}"
-    branch_created = create_branch(branch_name, repo, result["description"])
+    branch_created = create_branch(branch_name, repo, result.description)
     if not branch_created:
         logger.info("No changes were made, exiting.")
         return
 
     # Create a pull request
-    git_provider.create_pull_request(branch_name, result["title"], result["description"])
+    git_provider.create_pull_request(branch_name, result.title, result.description)
 
 
 def write_ssh_key(value, file_path):
