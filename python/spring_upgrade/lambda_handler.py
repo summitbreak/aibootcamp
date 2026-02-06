@@ -49,7 +49,7 @@ def lambda_handler(request, context):
     # Clone the target repo
     git_provider = GitHubProvider(api_key, repo_api_url)
     target_repo_dir = os.path.join(tmpdir, context.aws_request_id, repo_name)
-    repo = clone_repo(repo_url, target_repo_dir, ssh_private_key)
+    repo = clone_repo(repo_url, target_repo_dir, ssh_private_key_path)
 
     # Create a map of relevant filenames with the actual filenames in the target repo
     # TODO: optionally include code paths in request
