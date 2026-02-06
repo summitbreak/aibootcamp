@@ -30,6 +30,7 @@ def lambda_handler(request, context):
     logger.info(f"Processing event: {request}")
     spring_version = request["spring_version"]
     repo_url = request["github_url"]
+    repo_api_url = request["repo_api_url"]
     repo_name = repo_url.split("/")[-1]
 
     logger.info(f"Retrieving config")
@@ -46,7 +47,7 @@ def lambda_handler(request, context):
     write_ssh_key(ssh_private_key, ssh_private_key_path)
 
     # Clone the target repo
-    git_provider = GitHubProvider(api_key, repo_url)
+    git_provider = GitHubProvider(api_key, repo_api_url)
     target_repo_dir = os.path.join(tmpdir, context.aws_request_id, repo_name)
     repo = clone_repo(repo_url, target_repo_dir, ssh_private_key)
 
