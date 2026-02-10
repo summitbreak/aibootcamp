@@ -1,0 +1,17 @@
+{
+    "dev": {
+        "app_function": "spring-upgrade-auth.app",
+        "aws_region": "us-east-1",
+        "exclude": [
+            "boto3",
+            "dateutil",
+            "botocore",
+            "s3transfer",
+            "concurrent"
+        ],
+        "profile_name": "workspaces_machine_role",
+        "project_name": "auth",
+        "runtime": "python3.13",
+        "s3_bucket": "zappa-ypy1zqauc"
+    }
+}
