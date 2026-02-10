@@ -140,7 +140,8 @@ if __name__ == "__main__":
     class MockContext:
         aws_request_id = "1234"
     lambda_handler({
-        "github_url": "https://github.com/summitbreak/aibootcamp",
+        "github_url": "https://github.com/summitbreak/webjava8sb23",
+        "repo_api_url": "https://api.github.com/repos/summitbreak/webjava8sb23",
         "spring_version": "Spring boot 2.7"
         },
         MockContext(),

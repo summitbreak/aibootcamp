@@ -9,7 +9,7 @@
                 "ssm:GetParameters"
             ],
             "Resource": [
-                "arn:aws:ssm:us-east-1:359598898987:parameter/spring_upgrade_lambda*"
+                "arn:aws:ssm:us-east-1:049451948798:parameter/spring_upgrade_lambda*"
             ]
         },
         {
@@ -20,7 +20,7 @@
             ],
             "Resource": [
                 "arn:aws:bedrock:*::foundation-model/*",
-                "arn:aws:bedrock:us-east-1:359598898987:inference-profile/global.anthropic.claude-haiku-4-5-20251001-v1:0"
+                "arn:aws:bedrock:us-east-1:049451948798:inference-profile/global.anthropic.claude-haiku-4-5-20251001-v1:0"
             ]
         },
         {

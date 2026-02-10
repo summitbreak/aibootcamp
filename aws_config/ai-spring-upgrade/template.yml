@@ -36,7 +36,7 @@ Resources:
                 - ssm:GetParameters
               Resource:
                 - >-
-                  arn:aws:ssm:us-east-1:359598898987:parameter/spring_upgrade_lambda*
+                  arn:aws:ssm:us-east-1:049451948798:parameter/spring_upgrade_lambda*
             - Sid: InvokeBedrock
               Effect: Allow
               Action:
@@ -44,7 +44,7 @@ Resources:
               Resource:
                 - arn:aws:bedrock:*::foundation-model/*
                 - >-
-                  arn:aws:bedrock:us-east-1:359598898987:inference-profile/global.anthropic.claude-haiku-4-5-20251001-v1:0
+                  arn:aws:bedrock:us-east-1:049451948798:inference-profile/global.anthropic.claude-haiku-4-5-20251001-v1:0
             - Sid: SubscribeModel
               Effect: Allow
               Action:
@@ -55,14 +55,14 @@ Resources:
             - Effect: Allow
               Action:
                 - logs:CreateLogGroup
-              Resource: arn:aws:logs:us-east-1:359598898987:*
+              Resource: arn:aws:logs:us-east-1:049451948798:*
             - Effect: Allow
               Action:
                 - logs:CreateLogStream
                 - logs:PutLogEvents
               Resource:
                 - >-
-                  arn:aws:logs:us-east-1:359598898987:log-group:/aws/lambda/ai-spring-upgrade:*
+                  arn:aws:logs:us-east-1:049451948798:log-group:/aws/lambda/spring-upgrade:*
       RecursiveLoop: Terminate
       SnapStart:
         ApplyOn: None
