@@ -3,6 +3,7 @@ import tempfile
 import time
 import glob
 import json
+import asyncio
 
 from git_utils import GitHubProvider, clone_repo, create_branch, update_source_code
 from utils import get_logger, get_config
@@ -31,7 +32,6 @@ def lambda_handler(request, context):
     spring_version = request["spring_version"]
     repo_url = request["github_url"]
     repo_api_url = request["repo_api_url"]
-    repo_name = repo_url.split("/")[-1]
 
     logger.info(f"Retrieving config")
     config = get_config(PARAMETER_STORE_PREFIX, PARAMETER_NAMES)
@@ -41,17 +41,31 @@ def lambda_handler(request, context):
     # Select a model provider to perform the code generation
     provider = Claude(model_aws_region=MODEL_AWS_REGION)
 
+    branch_name = f"upgrade-code-{round(time.time())}"
+    # Create a pull request
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    task = loop.create_task(upgrade_code(spring_version, provider, api_key, repo_api_url, repo_url, branch_name, ssh_private_key, context))
+    loop.run_until_complete(task)
+
+    return { 'branch_name': branch_name}
+
+async def upgrade_code(spring_version, provider, api_key, repo_api_url, repo_url, branch_name, ssh_private_key, context):
+    repo_name = repo_url.split("/")[-1]
+
     # Prepare SSH credentials for cloning the target repo
     tmpdir = tempfile.mkdtemp()
     ssh_private_key_path = os.path.join(tmpdir, "ssh_private_key")
     write_ssh_key(ssh_private_key, ssh_private_key_path)
-
-    # Clone the target repo
+    
     git_provider = GitHubProvider(api_key, repo_api_url)
+    
+     # Clone the target repo
     target_repo_dir = os.path.join(tmpdir, context.aws_request_id, repo_name)
     repo = clone_repo(repo_url, target_repo_dir, ssh_private_key_path)
 
-    # Create a map of relevant filenames with the actual filenames in the target repo
+
+    # Create a map of filenames with the actual filenames in the target repo
     # TODO: optionally include code paths in request
     source_code_map = create_source_code_map(target_repo_dir)
 
@@ -61,8 +75,9 @@ def lambda_handler(request, context):
     # Modify the local cloned repo with the generated code
     update_source_code(result.code, target_repo_dir)
 
+    logger.info(f"Updated source code for brance {branch_name}.")
+
     # Create a branch and commit/push the code to the source repo
-    branch_name = f"upgrade-code-{round(time.time())}"
     branch_created = create_branch(branch_name, repo, result.description)
     if not branch_created:
         logger.info("No changes were made, exiting.")
@@ -70,6 +85,8 @@ def lambda_handler(request, context):
 
     # Create a pull request
     git_provider.create_pull_request(branch_name, result.title, result.description)
+
+    logger.info(f"Created pull request for branch {branch_name}.")
 
 
 def write_ssh_key(value, file_path):
