@@ -31,6 +31,7 @@ def lambda_handler(request, context):
     spring_version = request["spring_version"]
     repo_url = request["github_url"]
     repo_api_url = request["repo_api_url"]
+    action = request["action"]
     repo_name = repo_url.split("/")[-1]
 
     logger.info(f"Retrieving config")
@@ -54,6 +55,11 @@ def lambda_handler(request, context):
     # Create a map of relevant filenames with the actual filenames in the target repo
     # TODO: optionally include code paths in request
     source_code_map = create_source_code_map(target_repo_dir)
+    if (action== "info"):
+        logger.info("Info action , list of files in project:")
+        for key in source_code_map:
+            logger.info(key.replace(target_repo_dir, ""))
+        return
 
     # Trigger the code generation
     result = provider.upgrade_code(spring_version, source_code_map)
@@ -142,7 +148,8 @@ if __name__ == "__main__":
     lambda_handler({
         "github_url": "https://github.com/summitbreak/webjava8sb23",
         "repo_api_url": "https://api.github.com/repos/summitbreak/webjava8sb23",
-        "spring_version": "Spring boot 2.7"
+        "spring_version": "Spring boot 2.7",
+        "action": "info"
         },
         MockContext(),
     )

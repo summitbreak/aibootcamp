@@ -1,0 +1,213 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: API Gateway with JWT Authorizer
+
+Parameters:
+  JWKSUrl:
+    Type: String
+    Description: JWKS URL for JWT validation (e.g., https://{your-okta-domain}/oauth2/default/v1/keys)
+    Default: ''
+
+  JWTIssuer:
+    Type: String
+    Description: Expected JWT issuer (e.g., https://{your-okta-domain}/oauth2/default)
+    Default: ''
+
+  JWTAudience:
+    Type: String
+    Description: Expected JWT audience (e.g., api://default or your custom audience)
+    Default: ''
+
+  StageName:
+    Type: String
+    Description: API Gateway stage name
+    Default: prod
+
+Globals:
+  Function:
+    Runtime: python3.13
+    Timeout: 30
+    MemorySize: 256
+
+Resources:
+  # JWT Authorizer Lambda Function
+  JWTAuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-jwt-authorizer'
+      CodeUri: ./
+      Handler: authorizer.lambda_handler
+      Description: JWT token authorizer for API Gateway
+      Environment:
+        Variables:
+          JWKS_URL: !Ref JWKSUrl
+          JWT_ISSUER: !Ref JWTIssuer
+          JWT_AUDIENCE: !Ref JWTAudience
+      Role: !GetAtt JWTAuthorizerRole.Arn
+
+  # IAM Role for JWT Authorizer Lambda
+  JWTAuthorizerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-jwt-authorizer-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: AuthorizerPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+
+  # Example Backend Lambda Function
+  BackendFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-backend'
+      CodeUri: ./
+      Handler: example_backend.lambda_handler
+      Description: Example backend function protected by JWT authorizer
+      Role: !GetAtt BackendFunctionRole.Arn
+
+  # IAM Role for Backend Lambda
+  BackendFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-backend-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  # API Gateway REST API
+  ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub '${AWS::StackName}-api'
+      Description: API Gateway with JWT Authorizer
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  # API Gateway Authorizer
+  ApiAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      Name: JWTAuthorizer
+      Type: TOKEN
+      AuthorizerUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${JWTAuthorizerFunction.Arn}/invocations'
+      AuthorizerCredentials: !GetAtt ApiGatewayAuthorizerRole.Arn
+      AuthorizerResultTtlInSeconds: 300
+      IdentitySource: method.request.header.Authorization
+      RestApiId: !Ref ApiGateway
+
+  # IAM Role for API Gateway to invoke authorizer
+  ApiGatewayAuthorizerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-api-authorizer-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeAuthorizerLambda
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt JWTAuthorizerFunction.Arn
+
+  # API Gateway Resource - /hello
+  HelloResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !GetAtt ApiGateway.RootResourceId
+      PathPart: hello
+
+  # API Gateway Method - GET /hello
+  HelloMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref HelloResource
+      HttpMethod: GET
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref ApiAuthorizer
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${BackendFunction.Arn}/invocations'
+      MethodResponses:
+        - StatusCode: 200
+          ResponseModels:
+            application/json: Empty
+
+  # Lambda Permission for API Gateway to invoke Backend
+  BackendLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref BackendFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/*/*'
+
+  # API Gateway Deployment
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - HelloMethod
+    Properties:
+      RestApiId: !Ref ApiGateway
+      StageName: !Ref StageName
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${StageName}'
+    Export:
+      Name: !Sub '${AWS::StackName}-api-url'
+
+  ApiId:
+    Description: API Gateway ID
+    Value: !Ref ApiGateway
+    Export:
+      Name: !Sub '${AWS::StackName}-api-id'
+
+  AuthorizerFunctionArn:
+    Description: JWT Authorizer Lambda Function ARN
+    Value: !GetAtt JWTAuthorizerFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-authorizer-arn'
+
+  BackendFunctionArn:
+    Description: Backend Lambda Function ARN
+    Value: !GetAtt BackendFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-backend-arn'
+
+  TestCommand:
+    Description: Example curl command to test the API (replace TOKEN with actual JWT)
+    Value: !Sub 'curl -H "Authorization: Bearer YOUR_JWT_TOKEN" https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${StageName}/hello'
