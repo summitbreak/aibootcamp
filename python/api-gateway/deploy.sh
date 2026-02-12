@@ -46,6 +46,7 @@ echo "  Stack Name: $STACK_NAME"
 echo "  S3 Bucket: $S3_BUCKET"
 echo "  Region: $REGION"
 echo "  Stage: $STAGE_NAME"
+echo "  JWKS_URL: $JWKS_URL"
 if [ -n "$JWKS_URL" ]; then
     echo "  JWKS URL: $JWKS_URL"
 fi
@@ -72,14 +73,25 @@ echo ""
 
 # Package the CloudFormation template
 echo -e "${GREEN}[2/6] Packaging CloudFormation template...${NC}"
+cp template.yaml package/
+cd package
+#Solve issue with Windows flavour of library. Runtime.ImportModuleError: Unable to import module 'authorizer': cannot import name 'ObjectIdentifier' from 'cryptography.hazmat.bindings._rust'
+pip install \
+    --platform manylinux2014_x86_64 \
+    --target . \
+    --implementation cp \
+    --python-version 3.13 \
+    --only-binary=:all: --upgrade \
+    cryptography
 aws cloudformation package \
     --template-file template.yaml \
     --s3-bucket "$S3_BUCKET" \
-    --output-template-file packaged-template.yaml \
+    --output-template-file ../packaged-template.yaml \
     --region "$REGION"
 
 echo -e "${GREEN}Template packaged successfully${NC}"
 echo ""
+cd ..
 
 # Validate CloudFormation template
 echo -e "${GREEN}[3/6] Validating packaged CloudFormation template...${NC}"

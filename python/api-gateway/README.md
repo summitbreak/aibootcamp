@@ -69,6 +69,9 @@ This project is configured to work with Okta as the JWT provider. You need to se
    - Go to Applications → Create App Integration
    - Choose "API Services" for machine-to-machine or "SPA/Native" for user authentication
    - Note your Client ID and configure allowed grant types
+   - In created Application uncheck "Proof of possession"/DRoP
+   - In Security-API-Scopes add new api_scope (or any name)
+   - Add new Access Policy and Rule to it
 
 2. **Get Okta Configuration Values**:
    - **Okta Domain**: Found in your Okta admin console (e.g., `dev-12345678.okta.com`)
@@ -220,15 +223,17 @@ CLIENT_ID="your-client-id"
 CLIENT_SECRET="your-client-secret"
 AUTH_SERVER="default"
 
+echo "OKTA_DOMAIN: ${OKTA_DOMAIN} AUTH_SERVER: ${AUTH_SERVER}"
+echo "CLIENT_ID: ${CLIENT_ID} CLIENT_SECRET: ${CLIENT_SECRET}"
 # Get access token
-TOKEN=$(curl -s -X POST "https://${OKTA_DOMAIN}/oauth2/${AUTH_SERVER}/v1/token" \
+export JWT_TOKEN=$(curl -s -X POST "https://${OKTA_DOMAIN}/oauth2/${AUTH_SERVER}/v1/token" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=client_credentials" \
   -d "client_id=${CLIENT_ID}" \
   -d "client_secret=${CLIENT_SECRET}" \
-  -d "scope=api://default" | jq -r '.access_token')
+  -d "scope=api_access" | jq -r '.access_token')
 
-echo "Token: $TOKEN"
+echo "Token: $JWT_TOKEN"
 ```
 
 #### Option 2: Using Okta Authorization Code Flow (User Authentication)
@@ -271,13 +276,14 @@ curl -X POST "https://${OKTA_DOMAIN}/oauth2/${AUTH_SERVER}/v1/token" \
 
 ```bash
 # Get API URL from stack outputs
-API_URL=$(aws cloudformation describe-stacks \
+export API_URL=$(aws cloudformation describe-stacks \
     --stack-name jwt-api-gateway \
     --query 'Stacks[0].Outputs[?OutputKey==`ApiUrl`].OutputValue' \
     --output text)
 
+echo $API_URL
 # Test with JWT token
-curl -H "Authorization: Bearer YOUR_JWT_TOKEN" ${API_URL}/hello
+curl -H "Authorization: Bearer $AWT_TOKEN" ${API_URL}/hello
 ```
 
 ### Expected Response
