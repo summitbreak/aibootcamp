@@ -64,7 +64,11 @@ if [ ! -d "package" ]; then
     mkdir package
 fi
 
-pip install -r requirements.txt -t package/ --quiet
+pip install -r requirements.txt -t package/ --quiet \
+    --platform manylinux2014_x86_64 \
+    --implementation cp \
+    --python-version 3.13 \
+    --only-binary=:all: --upgrade
 cp authorizer.py package/
 cp example_backend.py package/
 
@@ -76,13 +80,13 @@ echo -e "${GREEN}[2/6] Packaging CloudFormation template...${NC}"
 cp template.yaml package/
 cd package
 #Solve issue with Windows flavour of library. Runtime.ImportModuleError: Unable to import module 'authorizer': cannot import name 'ObjectIdentifier' from 'cryptography.hazmat.bindings._rust'
-pip install \
-    --platform manylinux2014_x86_64 \
-    --target . \
-    --implementation cp \
-    --python-version 3.13 \
-    --only-binary=:all: --upgrade \
-    cryptography
+#pip install \
+#    --platform manylinux2014_x86_64 \
+#    --target . \
+#    --implementation cp \
+#    --python-version 3.13 \
+#    --only-binary=:all: --upgrade \
+#    cryptography
 aws cloudformation package \
     --template-file template.yaml \
     --s3-bucket "$S3_BUCKET" \

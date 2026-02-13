@@ -2,6 +2,7 @@ import json
 import os
 import jwt
 import logging
+from datetime import datetime, UTC
 from jwt import PyJWKClient
 
 # Configuration
@@ -25,7 +26,7 @@ def lambda_handler(event, context):
     """
     AWS Lambda authorizer function for JWT token validation
     """
-    logger.info("Authorizer start")
+    logger.info(f"Authorizer start context: {context}")
     try:
         # Extract token from Authorization header
         token = event.get('authorizationToken', '')
@@ -42,7 +43,6 @@ def lambda_handler(event, context):
 
         # Validate JWT token
         decoded_token = validate_jwt(token)
-        logger.info(f"decoded_token: {decoded_token}")
 
         # Extract principal ID (subject from token)
         principal_id = decoded_token.get('sub', 'user')
@@ -54,13 +54,13 @@ def lambda_handler(event, context):
         return policy
 
     except jwt.ExpiredSignatureError:
-        print("Token has expired")
+        logger.warning("Token has expired")
         raise Exception('Unauthorized: Token expired')
     except jwt.InvalidTokenError as e:
-        print(f"Invalid token: {str(e)}")
+        logger.warning(f"Invalid token: {str(e)}")
         raise Exception('Unauthorized: Invalid token')
     except Exception as e:
-        print(f"Authorization error: {str(e)}")
+        logger.warning(f"Authorization error: {str(e)}")
         raise Exception('Unauthorized')
 
 
@@ -70,6 +70,19 @@ def validate_jwt(token):
     """
     if JWKS_URL:
         # Use JWKS for validation (recommended for production)
+        logger.info("Use JWKS for validation")
+        """
+        decoded = jwt.decode(
+            token,
+            options={"verify_signature": False})
+        # Convert epoch to a datetime object
+        exp_datetime = datetime.fromtimestamp(decoded['exp'], tz=UTC)
+
+        # Format as a readable string (e.g., YYYY-MM-DD HH:MM:SS)
+        readable_exp = exp_datetime.strftime('%Y-%m-%d %H:%M:%S"')
+        utc_time = datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S"')
+        print(f"Token expiration UTC: {readable_exp} UTC time: {utc_time}") 
+        """
         jwks_client = PyJWKClient(JWKS_URL)
         signing_key = jwks_client.get_signing_key_from_jwt(token)
 
@@ -88,6 +101,7 @@ def validate_jwt(token):
             options={"verify_signature": False}
         )
 
+    logger.info(f"decoded token: {decoded}")
     return decoded
 
 
