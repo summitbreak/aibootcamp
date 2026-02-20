@@ -33,7 +33,10 @@ def update_source_code(files, repo_dir, format_code=True):
             contents = file.code
         with open(os.path.join(repo_dir, file.filename), "w") as f:
             logger.info(f'Writing to {file.filename}')
-            f.write(contents)
+            try:
+                f.write(contents)
+            except Exception as e:
+                logger.error(f"Failed writing to {file.filename}: {e}")
 
 
 def format(content):
