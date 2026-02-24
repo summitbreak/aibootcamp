@@ -35,7 +35,6 @@ def api_response(status_code, body):
 
 def lambda_handler(event, context):
     """Lambda handler compatible with API Gateway proxy integration.
-
     Routes:
       GET  /info            - health/info check
       POST /upgrade-project - trigger Spring upgrade
@@ -56,6 +55,7 @@ def lambda_handler(event, context):
 
             spring_version = body["spring_version"]
             repo_url = body["github_url"]
+            pom_path = body["pom_path"]
             repo_api_url = body["repo_api_url"]
 
             logger.info(f"Retrieving config")
@@ -67,9 +67,10 @@ def lambda_handler(event, context):
             provider = Claude(model_aws_region=MODEL_AWS_REGION)
 
             branch_name = f"upgrade-code-{round(time.time())}"
+            # Create a pull request
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            task = loop.create_task(upgrade_code(spring_version, provider, api_key, repo_api_url, repo_url, branch_name, ssh_private_key, context))
+            task = loop.create_task(upgrade_code(spring_version, provider, api_key, repo_api_url, repo_url, branch_name, ssh_private_key, pom_path, context))
             loop.run_until_complete(task)
 
             return api_response(200, {"branch_name": branch_name})
@@ -87,7 +88,7 @@ def lambda_handler(event, context):
         logger.exception(f"Internal error: {e}")
         return api_response(500, {"error": "Internal server error"})
 
-async def upgrade_code(spring_version, provider, api_key, repo_api_url, repo_url, branch_name, ssh_private_key, context):
+async def upgrade_code(spring_version, provider, api_key, repo_api_url, repo_url, branch_name, ssh_private_key, pom_path,context):
     repo_name = repo_url.split("/")[-1]
 
     # Prepare SSH credentials for cloning the target repo
@@ -101,16 +102,18 @@ async def upgrade_code(spring_version, provider, api_key, repo_api_url, repo_url
     target_repo_dir = os.path.join(tmpdir, context.aws_request_id, repo_name)
     repo = clone_repo(repo_url, target_repo_dir, ssh_private_key_path)
 
-
     # Create a map of filenames with the actual filenames in the target repo
-    # TODO: optionally include code paths in request
     source_code_map = create_source_code_map(target_repo_dir)
 
-    # Trigger the code generation
+    # Trigger the code generation 
     result = provider.upgrade_code(spring_version, source_code_map)
 
     # Modify the local cloned repo with the generated code
     update_source_code(result.code, target_repo_dir)
+
+    # trigger code unit testing
+    test_path = os.path.join(target_repo_dir, pom_path)
+    test_result = provider.test_code(test_path)
 
     logger.info(f"Updated source code for brance {branch_name}.")
 
@@ -121,7 +124,8 @@ async def upgrade_code(spring_version, provider, api_key, repo_api_url, repo_url
         return
 
     # Create a pull request
-    git_provider.create_pull_request(branch_name, result.title, result.description)
+    pr_description = f"{result.description} \n {test_result['messages'][-1].content}"
+    git_provider.create_pull_request(branch_name, result.title, pr_description)
 
     logger.info(f"Created pull request for branch {branch_name}.")
 
@@ -199,10 +203,26 @@ if __name__ == "__main__":
         "httpMethod": "POST",
         "path": "/upgrade-project",
         "body": json.dumps({
-            "github_url": "https://github.com/summitbreak/aibootcamp",
-            "repo_api_url": "https://api.github.com/repos/summitbreak/aibootcamp",
-            "spring_version": "Spring boot 2.7"
+            "github_url": "git@github.com:lnealer/aibootcamp.git",
+            "spring_version": "Spring boot 3.2",
+            "repo_api_url": "https://api.github.com/repos/lnealer/aibootcamp",
+            "pom_path": "webjava8sb2.3/pom.xml"
         })
     },
         MockContext(),
     )
+
+'''    
+    lambda_handler({
+        "httpMethod": "POST",
+        "path": "/upgrade-project",
+        "body": json.dumps({
+            "github_url": "https://github.com/summitbreak/aibootcamp",
+            "repo_api_url": "https://api.github.com/repos/summitbreak/aibootcamp",
+            "spring_version": "Spring boot 2.7"
+        },
+            MockContext(),
+        )
+    )
+'''
+
