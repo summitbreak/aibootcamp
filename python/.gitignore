@@ -22,6 +22,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+__pycache__/
 
 # AWS SAM
 .aws-sam/
@@ -41,8 +42,9 @@ Thumbs.db
 
 # Environment variables
 .env
-.env.local
-okta-config.sh
+.env.local  
+.claude
+#okta-config.sh
 okta-config.bat
 
 # Logs

@@ -1,1 +1,0 @@
-{"errorMessage": "Unauthorized: Invalid token", "errorType": "Exception", "requestId": "e2c60bfc-73e9-461c-adc6-e856f83817b6", "stackTrace": ["  File \"/var/task/authorizer.py\", line 61, in lambda_handler\n    raise Exception('Unauthorized: Invalid token')\n"]}
