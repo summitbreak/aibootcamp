@@ -61,16 +61,18 @@ echo ""
 # Install Python dependencies
 echo -e "${GREEN}[1/6] Installing Python dependencies...${NC}"
 if [ ! -d "package" ]; then
-    mkdir package
+    echo "Run prep_deploy.sh to create package folder with python artifacts"
+    exit
+#    mkdir package
 fi
 
-pip install -r requirements.txt -t package/ --quiet \
-    --platform manylinux2014_x86_64 \
-    --implementation cp \
-    --python-version 3.13 \
-    --only-binary=:all: --upgrade
+#pip install -r requirements.txt -t package/ --quiet \
+#    --platform manylinux2014_x86_64 \
+#    --implementation cp \
+#    --python-version 3.13 \
+#    --only-binary=:all: --upgrade
 cp authorizer.py package/
-cp example_backend.py package/
+cp ../spring_upgrade/*.py package/
 
 echo -e "${GREEN}Dependencies installed successfully${NC}"
 echo ""
@@ -158,9 +160,9 @@ echo -e "${GREEN}Outputs retrieved successfully${NC}"
 echo ""
 
 # Cleanup
-echo -e "${GREEN}[6/6] Cleaning up...${NC}"
-rm -rf package
-echo -e "${GREEN}Cleanup completed${NC}"
+#echo -e "${GREEN}[6/6] Cleaning up...${NC}"
+# rm -rf package
+#echo -e "${GREEN}Cleanup completed${NC}"
 echo ""
 
 # Display results
@@ -175,9 +177,11 @@ echo -e "${YELLOW}Authorizer Function ARN:${NC}"
 echo "  $AUTHORIZER_ARN"
 echo ""
 echo -e "${YELLOW}Test the API:${NC}"
-echo "  curl -H \"Authorization: Bearer YOUR_JWT_TOKEN\" $API_URL/hello"
+echo "  curl -H \"Authorization: Bearer JWT_TOKEN\" $API_URL/hello"
 echo ""
 echo -e "${YELLOW}View logs:${NC}"
 echo "  aws logs tail /aws/lambda/$STACK_NAME-jwt-authorizer --follow --region $REGION"
 echo "  aws logs tail /aws/lambda/$STACK_NAME-backend --follow --region $REGION"
-echo ""
+echo "AWS Cloudwatch: https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:logs-insights$3FqueryDetail$3D~(end~0~start~-3600~timeType~'RELATIVE~tz~'UTC~unit~'seconds~editorString~'fields*20*40timestamp*2c*20*40entity.Attributes.Lambda.Function*2c*20*40message*0a*7c*20sort*20*40timestamp*20desc*0a*7c*20limit*2010000~queryId~'5c3acc4f-6305-4bbf-a4b7-57f8ec7fc336~source~(~'*2faws*2flambda*2fjwt-api-gateway-jwt-authorizer~'*2faws*2flambda*2fjwt-api-gateway-backend)~lang~'CWLI~logClass~'STANDARD~queryBy~'logGroupName)"
+
+ 

@@ -283,7 +283,21 @@ export API_URL=$(aws cloudformation describe-stacks \
 
 echo $API_URL
 # Test with JWT token
-curl -H "Authorization: Bearer $AWT_TOKEN" ${API_URL}/hello
+curl -H "Authorization: Bearer $JWT_TOKEN" ${API_URL}/info
+
+curl -X POST  ${API_URL}/upgrade-project \
+  -H "Authorization: Bearer $JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  --aws-sigv4 "aws:amz:region:execute-api" \
+  --data-raw '{"github_url": "https://github.com/summitbreak/aibootcamp, "spring_version": "Spring boot 2.7"}'
+
+curl -H "Authorization: Bearer $JWT_TOKEN" -H "Content-Type: application/json"  \
+     -X POST  ${API_URL}/upgrade-project \
+  -d '{"github_url": "https://github.com/summitbreak/aibootcamp", \
+      "repo_api_url": "https://api.github.com/summitbreak/webjava8sb23", \
+      "spring_version": "Spring boot 2.7"}'
+
+
 ```
 
 ### Expected Response

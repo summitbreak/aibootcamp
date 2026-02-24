@@ -77,9 +77,11 @@ Resources:
     Properties:
       FunctionName: !Sub '${AWS::StackName}-backend'
       CodeUri: ./
-      Handler: example_backend.lambda_handler
+      Handler: lambda_handler.lambda_handler
       Description: Example backend function protected by JWT authorizer
       Role: !GetAtt BackendFunctionRole.Arn
+      Layers:
+        - arn:aws:lambda:us-east-1:553035198032:layer:git-lambda2:8
 
   # IAM Role for Backend Lambda
   BackendFunctionRole:
@@ -139,21 +141,47 @@ Resources:
                 Action: lambda:InvokeFunction
                 Resource: !GetAtt JWTAuthorizerFunction.Arn
 
-  # API Gateway Resource - /hello
-  HelloResource:
+  # API Gateway Resource - /info
+  InfoResource:
     Type: AWS::ApiGateway::Resource
     Properties:
       RestApiId: !Ref ApiGateway
       ParentId: !GetAtt ApiGateway.RootResourceId
-      PathPart: hello
+      PathPart: info
 
-  # API Gateway Method - GET /hello
-  HelloMethod:
+  # API Gateway Method - GET /info
+  InfoMethod:
     Type: AWS::ApiGateway::Method
     Properties:
       RestApiId: !Ref ApiGateway
-      ResourceId: !Ref HelloResource
+      ResourceId: !Ref InfoResource
       HttpMethod: GET
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref ApiAuthorizer
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${BackendFunction.Arn}/invocations'
+      MethodResponses:
+        - StatusCode: 200
+          ResponseModels:
+            application/json: Empty
+
+  # API Gateway Resource - POST/upgrade-project
+  UpgradeProjectResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !GetAtt ApiGateway.RootResourceId
+      PathPart: upgrade-project
+
+  # API Gateway Method - POST /upgrade-project
+  UpgradeProjectMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref UpgradeProjectResource
+      HttpMethod: POST
       AuthorizationType: CUSTOM
       AuthorizerId: !Ref ApiAuthorizer
       Integration:
@@ -175,13 +203,17 @@ Resources:
       SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/*/*'
 
   # API Gateway Deployment
+  # whenever you need to force API Gateway to pick up changes, just edit Description string and redeploy 
+  # CloudFormation will see it as a change and create a new deployment snapshot.
   ApiDeployment:
     Type: AWS::ApiGateway::Deployment
     DependsOn:
-      - HelloMethod
+      - InfoMethod
+      - UpgradeProjectMethod
     Properties:
       RestApiId: !Ref ApiGateway
       StageName: !Ref StageName
+      Description: !Sub 'Deployed by ${AWS::StackName} - update this string to force redeployment'
 
 Outputs:
   ApiUrl:
@@ -210,4 +242,4 @@ Outputs:
 
   TestCommand:
     Description: Example curl command to test the API (replace TOKEN with actual JWT)
-    Value: !Sub 'curl -H "Authorization: Bearer YOUR_JWT_TOKEN" https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${StageName}/hello'
+    Value: !Sub 'curl -H "Authorization: Bearer YOUR_JWT_TOKEN" https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${StageName}/info'

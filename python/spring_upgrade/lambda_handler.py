@@ -24,31 +24,68 @@ MODEL_AWS_REGION = "us-east-1"
 SSH_PRIVATE_KEY_FILENAME = "ssh_private_key"
 
 
-def lambda_handler(request, context):
-    """Lambda handler for the upgrade function.
+def api_response(status_code, body):
+    """Return a properly formatted API Gateway proxy response."""
+    return {
+        "statusCode": status_code,
+        "headers": {"Content-Type": "application/json"},
+        "body": json.dumps(body)
+    }
+
+
+def lambda_handler(event, context):
+    """Lambda handler compatible with API Gateway proxy integration.
+
+    Routes:
+      GET  /info            - health/info check
+      POST /upgrade-project - trigger Spring upgrade
     """
+    logger.info(f"Processing event: {event}")
 
-    logger.info(f"Processing event: {request}")
-    spring_version = request["spring_version"]
-    repo_url = request["github_url"]
-    repo_api_url = request["repo_api_url"]
+    http_method = event.get("httpMethod", "")
+    path = event.get("path", "")
 
-    logger.info(f"Retrieving config")
-    config = get_config(PARAMETER_STORE_PREFIX, PARAMETER_NAMES)
-    ssh_private_key = config["ssh_private_key"]
-    api_key = config["api_key"]
+    try:
+        if http_method == "GET" and path == "/info":
+            return api_response(200, {"status": "ok", "service": "spring-upgrade"})
 
-    # Select a model provider to perform the code generation
-    provider = Claude(model_aws_region=MODEL_AWS_REGION)
+        elif http_method == "POST" and path == "/upgrade-project":
+            body = event.get("body") or "{}"
+            if isinstance(body, str):
+                body = json.loads(body)
 
-    branch_name = f"upgrade-code-{round(time.time())}"
-    # Create a pull request
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    task = loop.create_task(upgrade_code(spring_version, provider, api_key, repo_api_url, repo_url, branch_name, ssh_private_key, context))
-    loop.run_until_complete(task)
+            spring_version = body["spring_version"]
+            repo_url = body["github_url"]
+            repo_api_url = body["repo_api_url"]
 
-    return { 'branch_name': branch_name}
+            logger.info(f"Retrieving config")
+            config = get_config(PARAMETER_STORE_PREFIX, PARAMETER_NAMES)
+            ssh_private_key = config["ssh_private_key"]
+            api_key = config["api_key"]
+
+            # Select a model provider to perform the code generation
+            provider = Claude(model_aws_region=MODEL_AWS_REGION)
+
+            branch_name = f"upgrade-code-{round(time.time())}"
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            task = loop.create_task(upgrade_code(spring_version, provider, api_key, repo_api_url, repo_url, branch_name, ssh_private_key, context))
+            loop.run_until_complete(task)
+
+            return api_response(200, {"branch_name": branch_name})
+
+        else:
+            return api_response(404, {"error": f"Route {http_method} {path} not found"})
+
+    except KeyError as e:
+        logger.exception(f"Missing required field: {e}")
+        return api_response(400, {"error": f"Missing required field: {str(e)}"})
+    except json.JSONDecodeError as e:
+        logger.exception(f"Invalid JSON body: {e}")
+        return api_response(400, {"error": "Invalid JSON body"})
+    except Exception as e:
+        logger.exception(f"Internal error: {e}")
+        return api_response(500, {"error": "Internal server error"})
 
 async def upgrade_code(spring_version, provider, api_key, repo_api_url, repo_url, branch_name, ssh_private_key, context):
     repo_name = repo_url.split("/")[-1]
@@ -156,9 +193,16 @@ if __name__ == "__main__":
 
     class MockContext:
         aws_request_id = "1234"
+
+    # Simulate API Gateway proxy event for POST /upgrade-project
     lambda_handler({
-        "github_url": "https://github.com/summitbreak/aibootcamp",
-        "spring_version": "Spring boot 2.7"
-        },
+        "httpMethod": "POST",
+        "path": "/upgrade-project",
+        "body": json.dumps({
+            "github_url": "https://github.com/summitbreak/aibootcamp",
+            "repo_api_url": "https://api.github.com/repos/summitbreak/aibootcamp",
+            "spring_version": "Spring boot 2.7"
+        })
+    },
         MockContext(),
     )

@@ -54,13 +54,13 @@ def lambda_handler(event, context):
         return policy
 
     except jwt.ExpiredSignatureError:
-        logger.warning("Token has expired")
+        logger.exception("Token has expired")
         raise Exception('Unauthorized: Token expired')
     except jwt.InvalidTokenError as e:
-        logger.warning(f"Invalid token: {str(e)}")
+        logger.exception(f"Invalid token: {str(e)}")
         raise Exception('Unauthorized: Invalid token')
     except Exception as e:
-        logger.warning(f"Authorization error: {str(e)}")
+        logger.exception(f"Authorization error: {str(e)}")
         raise Exception('Unauthorized')
 
 
@@ -70,19 +70,20 @@ def validate_jwt(token):
     """
     if JWKS_URL:
         # Use JWKS for validation (recommended for production)
-        logger.info("Use JWKS for validation")
-        """
+        logger.info(f"Use JWKS for validation. token: {token}")
+        #"""
         decoded = jwt.decode(
             token,
             options={"verify_signature": False})
+        logger.info(f"decoded token: {decoded}")
+
         # Convert epoch to a datetime object
         exp_datetime = datetime.fromtimestamp(decoded['exp'], tz=UTC)
-
         # Format as a readable string (e.g., YYYY-MM-DD HH:MM:SS)
         readable_exp = exp_datetime.strftime('%Y-%m-%d %H:%M:%S"')
         utc_time = datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S"')
-        print(f"Token expiration UTC: {readable_exp} UTC time: {utc_time}") 
-        """
+        logger.info(f"Token expiration UTC: {readable_exp} UTC time: {utc_time}") 
+        #"""                
         jwks_client = PyJWKClient(JWKS_URL)
         signing_key = jwks_client.get_signing_key_from_jwt(token)
 
