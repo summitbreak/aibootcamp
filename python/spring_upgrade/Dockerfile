@@ -1,4 +1,4 @@
-FROM public.ecr.aws/lambda/python:3.12 AS builder
+FROM  --platform=linux/amd64  public.ecr.aws/lambda/python:3.12 AS builder
 
 # Install Java 21 (Amazon Corretto) and dependencies
 RUN yum install -y \
