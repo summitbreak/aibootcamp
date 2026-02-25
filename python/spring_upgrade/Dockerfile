@@ -31,3 +31,5 @@ RUN pip install --upgrade pip && \
 COPY lambda_handler.py /var/task/
 
 CMD ["lambda_handler.lambda_handler"]
+
+# docker buildx build --platform linux/amd64 --build-arg PLATFORM=linux/amd64 -t python-java-lambda .
