@@ -297,6 +297,7 @@ curl -H "Authorization: Bearer $JWT_TOKEN" -H "Content-Type: application/json"  
       "repo_api_url": "https://api.github.com/summitbreak/webjava8sb23", \
       "spring_version": "Spring boot 2.7"}'
 
+CloudWatch: https://us-east-1.signin.aws.amazon.com/oauth?client_id=arn%3Aaws%3Asignin%3A%3A%3Aconsole%2Fcloudwatch&code_challenge=9J8J10d7lj9ZO5Q8lwe8hpQ3DIsH8WEvnU1W15LrQds&code_challenge_method=SHA-256&response_type=code&redirect_uri=https%3A%2F%2Fus-east-1.console.aws.amazon.com%2Fcloudwatch%2Fhome%3Fca-oauth-flow-id%3D2c6d%26hashArgs%3D%2523logsV2%253Alogs-insights%25243FqueryDetail%25243D%257E%2528end%257E0%257Estart%257E-10800%257EtimeType%257E%2527RELATIVE%257Etz%257E%2527UTC%257Eunit%257E%2527seconds%257EeditorString%257E%2527fields*20*40timestamp*2c*20*40entity.Attributes.Lambda.Function*2c*20*40message*0a*23*7c*20filter*20message*20like*20*2fUse*20JWKS*20for*20valid*2f*0a*7c*20sort*20*40timestamp*20desc*0a*7c*20limit*2010000%257EqueryId%257E%25275c3acc4f-6305-4bbf-a4b7-57f8ec7fc336%257Esource%257E%2528%257E%2527arn*3aaws*3alogs*3aus-east-1*3a049451948798*3alog-group*3a*2faws*2flambda*2fjwt-api-gateway-backend%257E%2527arn*3aaws*3alogs*3aus-east-1*3a049451948798*3alog-group*3a*2faws*2flambda*2fjwt-api-gateway-jwt-authorizer%2529%257Elang%257E%2527CWLI%257ElogClass%257E%2527STANDARD%257EqueryBy%257E%2527logGroupName%2529%26isauthcode%3Dtrue%26oauthStart%3D1771969132408%26region%3Dus-east-1%26state%3DhashArgsFromTB_us-east-1_8af2299d4104763f
 
 ```
 

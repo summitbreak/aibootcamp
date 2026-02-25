@@ -213,7 +213,7 @@ Resources:
     Properties:
       RestApiId: !Ref ApiGateway
       StageName: !Ref StageName
-      Description: !Sub 'Deployed by ${AWS::StackName} - update this string to force redeployment'
+      Description: !Sub 'Deployed by ${AWS::StackName} - update this string to force redeployment:02-24 16:38'
 
 Outputs:
   ApiUrl:
@@ -242,4 +242,4 @@ Outputs:
 
   TestCommand:
     Description: Example curl command to test the API (replace TOKEN with actual JWT)
-    Value: !Sub 'curl -H "Authorization: Bearer YOUR_JWT_TOKEN" https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${StageName}/info'
+    Value: !Sub 'curl -H "Authorization: Bearer $JWT_TOKEN" https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${StageName}/info'

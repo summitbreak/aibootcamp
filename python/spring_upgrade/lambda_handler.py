@@ -212,17 +212,28 @@ if __name__ == "__main__":
         MockContext(),
     )
 
-'''    
+
+'''
     lambda_handler({
+        "httpMethod": "GET",
+        "path": "/info",
+    },
+        MockContext(),
+    )
+
+        lambda_handler({
         "httpMethod": "POST",
         "path": "/upgrade-project",
         "body": json.dumps({
-            "github_url": "https://github.com/summitbreak/aibootcamp",
-            "repo_api_url": "https://api.github.com/repos/summitbreak/aibootcamp",
-            "spring_version": "Spring boot 2.7"
-        },
-            MockContext(),
-        )
+            "github_url": "git@github.com:summitbreak/webjava8sb23.git",
+            "repo_api_url": "https://api.github.com/repos/summitbreak/webjava8sb23",
+            "spring_version": "Spring boot 2.7",
+            "pom_path": "webjava8sb23/pom.xml"
+        })
+    },
+        MockContext(),
     )
-'''
+
+'''    
+
 

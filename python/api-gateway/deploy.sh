@@ -183,5 +183,3 @@ echo -e "${YELLOW}View logs:${NC}"
 echo "  aws logs tail /aws/lambda/$STACK_NAME-jwt-authorizer --follow --region $REGION"
 echo "  aws logs tail /aws/lambda/$STACK_NAME-backend --follow --region $REGION"
 echo "AWS Cloudwatch: https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:logs-insights$3FqueryDetail$3D~(end~0~start~-3600~timeType~'RELATIVE~tz~'UTC~unit~'seconds~editorString~'fields*20*40timestamp*2c*20*40entity.Attributes.Lambda.Function*2c*20*40message*0a*7c*20sort*20*40timestamp*20desc*0a*7c*20limit*2010000~queryId~'5c3acc4f-6305-4bbf-a4b7-57f8ec7fc336~source~(~'*2faws*2flambda*2fjwt-api-gateway-jwt-authorizer~'*2faws*2flambda*2fjwt-api-gateway-backend)~lang~'CWLI~logClass~'STANDARD~queryBy~'logGroupName)"
-
- 
