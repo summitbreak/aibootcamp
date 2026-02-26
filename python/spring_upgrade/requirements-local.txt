@@ -1,0 +1,6 @@
+-r requirements.txt
+langchain-openai==1.0.3
+langgraph==1.0.7
+boto3
+openai==1.109.1
+werkzeug==0.16.0
