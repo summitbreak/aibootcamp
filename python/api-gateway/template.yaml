@@ -80,6 +80,9 @@ Resources:
       Handler: lambda_handler.lambda_handler
       Description: Example backend function protected by JWT authorizer
       Role: !GetAtt BackendFunctionRole.Arn
+      Environment:
+        Variables:
+          LD_LIBRARY_PATH: /var/task
       Layers:
         - arn:aws:lambda:us-east-1:553035198032:layer:git-lambda2:8
 
@@ -97,6 +100,17 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: BackendFunctionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: ssm:GetParameters
+                Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/spring_upgrade_lambda_*'
+              - Effect: Allow
+                Action: bedrock:InvokeModel
+                Resource: '*'
 
   # API Gateway REST API
   ApiGateway:

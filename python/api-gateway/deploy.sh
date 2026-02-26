@@ -73,6 +73,10 @@ fi
 #    --only-binary=:all: --upgrade
 cp authorizer.py package/
 cp ../spring_upgrade/*.py package/
+#  Lambda extracts the package zip to /var/task/. With LD_LIBRARY_PATH=/var/task, when the SSH binary from git-lambda2 runs, it
+#  finds libcrypto.so.10 and libexpat.so.1 there instead of failing. 
+
+cp ../spring_upgrade/*.so* package/
 
 echo -e "${GREEN}Dependencies installed successfully${NC}"
 echo ""
@@ -177,7 +181,7 @@ echo -e "${YELLOW}Authorizer Function ARN:${NC}"
 echo "  $AUTHORIZER_ARN"
 echo ""
 echo -e "${YELLOW}Test the API:${NC}"
-echo "  curl -H \"Authorization: Bearer JWT_TOKEN\" $API_URL/hello"
+echo "  curl -H \"Authorization: Bearer JWT_TOKEN\" $API_URL/info"
 echo ""
 echo -e "${YELLOW}View logs:${NC}"
 echo "  aws logs tail /aws/lambda/$STACK_NAME-jwt-authorizer --follow --region $REGION"
