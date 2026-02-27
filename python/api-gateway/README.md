@@ -464,3 +464,100 @@ For most development use, this stays within AWS free tier.
 ## License
 
 MIT License - feel free to use this project as a template for your own applications.
+
+# Architectural Improvement Suggestions
+
+  ---
+ ## 1. Docker Container Lambda (Strong Recommendation)
+
+  Why the current zip approach hurts this project specifically:
+
+  ┌────────────────────────────────┬──────────────────────┬───────────────────────────┐
+  │            Problem             │      Zip/Layer       │          Docker           │
+  ├────────────────────────────────┼──────────────────────┼───────────────────────────┤
+  │ libcrypto/libfipscheck missing │ Layer built for AL2, │ RUN yum install -y git    │
+  │                                │  breaks on AL2023    │ openssh — done            │
+  ├────────────────────────────────┼──────────────────────┼───────────────────────────┤
+  │ 250 MB size limit forced       │ Had to drop openai,  │ 10 GB image limit         │
+  │ removing packages              │ langgraph            │                           │
+  ├────────────────────────────────┼──────────────────────┼───────────────────────────┤
+  │ --only-binary=:all: platform   │ Required for         │ Normal pip install        │
+  │ hacks                          │ manylinux wheels     │                           │
+  ├────────────────────────────────┼──────────────────────┼───────────────────────────┤
+  │ Maven for tests                │ Not available        │ RUN yum install -y maven  │
+  ├────────────────────────────────┼──────────────────────┼───────────────────────────┤
+  │ Local testing                  │ Must deploy to test  │ docker run locally =      │
+  │                                │ runtime issues       │ exact Lambda environment  │
+  └────────────────────────────────┴──────────────────────┴───────────────────────────┘
+ The git-lambda2 layer and all the shared library workarounds disappear entirely.
+
+ ##2. Chatbot / Conversational Agent vs Current Fire-and-Forget
+
+  Current design problems:
+
+  - Lambda timeout is 30 seconds — a real Spring upgrade (clone + AI generation + mvn
+  test) takes 2–10 minutes. The current code will always time out on real repos.
+  - No feedback loop — if Claude generates bad code or tests fail, there's no way to
+  iterate. The PR is just created (or silently not created).
+  - No user input during process — spring version, pom path are fixed upfront. User can't
+  steer the upgrade mid-process.
+
+  Option A: Bedrock Agents (fully managed)
+  User → Bedrock Agent → Tools:
+                           ├── clone_repo
+                           ├── upgrade_code
+                           ├── run_maven_test
+                           └── create_pull_request
+  - AWS manages conversation state, tool orchestration, retries
+  - Agent can ask clarifying questions before starting
+  - Built-in conversation history
+  - No LangChain needed at all — simplifies the dependency tree significantly
+
+  Option B: Async job pattern + status polling (fixes the timeout problem immediately)
+  POST /upgrade-project  →  202 Accepted  {job_id: "abc123"}
+                             ↓ triggers SQS → background Lambda (15 min timeout)
+
+  GET /upgrade-project/abc123  →  {status: "running", step: "cloning repo"}
+                                →  {status: "done", pr_url: "https://..."}
+  This is the minimum fix to make the current design actually work on real repos.
+
+  Option C: Step Functions (best for the current agentic flow)
+  API Gateway → Step Functions state machine:
+    1. CloneRepo (Lambda, 30s)
+    2. GenerateCode (Lambda, 5min timeout, retry on failure)
+    3. RunTests (Lambda, 10min timeout)
+    4. CreatePR (Lambda, 30s)
+  - Each step has its own timeout and retry policy
+  - Full execution history in AWS console
+  - Easy to add human approval step before PR creation
+
+
+  ## 3. Other Issues Worth Addressing
+
+  Lambda timeout too short:
+  # template.yaml — current
+  Globals:
+    Function:
+      Timeout: 30   # ← will always timeout on real upgrades
+  Minimum viable: Timeout: 900 (15 min max for Lambda). But Step Functions is the right
+  fix.
+
+  GitHub token exposed in git remote URL:
+  After cloning with https://<token>@github.com/..., the token is stored in .git/config in
+   /tmp. Low risk in Lambda (ephemeral) but worth noting.
+
+  ---
+  Recommended Path
+
+  ┌──────────┬───────────────────────────────────────────┬──────────┐
+  │ Priority │                  Change                   │  Effort  │
+  ├──────────┼───────────────────────────────────────────┼──────────┤
+  │ 🔴 Now   │ Increase Lambda timeout to 900s           │ 1 line   │
+  ├──────────┼───────────────────────────────────────────┼──────────┤
+  │ 🟠 Soon  │ Switch to Docker container                │ 1–2 days │
+  ├──────────┼───────────────────────────────────────────┼──────────┤
+  │ 🟠 Soon  │ Async job pattern (SQS + status endpoint) │ 2–3 days │
+  ├──────────┼───────────────────────────────────────────┼──────────┤
+  │ 🟡 Later │ Migrate to Bedrock Agents                 │ 1 week   │
+  └──────────┴───────────────────────────────────────────┴──────────┘
+
